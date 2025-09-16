@@ -1,0 +1,142 @@
+{% extends 'base.html' %}
+{% block content %}
+{% load static %}
+
+<div class="p-3">
+  <div class="container">
+    <div class="row mt-3">
+      <div class="col mx-auto mb-3">
+        <h2>Movie Requests</h2>
+        <hr />
+        
+        <!-- Display messages -->
+        {% if messages %}
+          {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+              {{ message }}
+              <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+          {% endfor %}
+        {% endif %}
+
+        <!-- Tab Navigation -->
+        <ul class="nav nav-tabs" id="requestTabs" role="tablist">
+          <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="add-request-tab" data-bs-toggle="tab" data-bs-target="#add-request" type="button" role="tab" aria-controls="add-request" aria-selected="true">
+              <i class="fas fa-plus me-2"></i>Add Request
+            </button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" id="my-requests-tab" data-bs-toggle="tab" data-bs-target="#my-requests" type="button" role="tab" aria-controls="my-requests" aria-selected="false">
+              <i class="fas fa-list me-2"></i>My Requests ({{ template_data.requests|length }})
+            </button>
+          </li>
+        </ul>
+
+        <!-- Tab Content -->
+        <div class="tab-content" id="requestTabsContent">
+          <!-- Add Request Tab -->
+          <div class="tab-pane fade show active" id="add-request" role="tabpanel" aria-labelledby="add-request-tab">
+            <div class="card mt-3">
+              <div class="card-body">
+                <h5 class="card-title">Request a Movie</h5>
+                <p class="card-text">Submit a request for a movie you'd like to see added to our store.</p>
+                
+                <form method="POST">
+                  {% csrf_token %}
+                  <div class="mb-3">
+                    <label for="movieName" class="form-label">Movie Name *</label>
+                    <input type="text" class="form-control" id="movieName" name="name" required maxlength="255" placeholder="Enter the movie title">
+                  </div>
+                  <div class="mb-3">
+                    <label for="movieDescription" class="form-label">Description *</label>
+                    <textarea class="form-control" id="movieDescription" name="description" rows="4" required placeholder="Describe the movie, why you'd like it added, or any additional details..."></textarea>
+                  </div>
+                  <button type="submit" class="btn bg-dark text-white">
+                    <i class="fas fa-paper-plane me-2"></i>Submit Request
+                  </button>
+                </form>
+              </div>
+            </div>
+          </div>
+
+          <!-- My Requests Tab -->
+          <div class="tab-pane fade" id="my-requests" role="tabpanel" aria-labelledby="my-requests-tab">
+            <div class="mt-3">
+              {% if template_data.requests %}
+                <div class="row">
+                  {% for request in template_data.requests %}
+                    <div class="col-md-6 col-lg-4 mb-3">
+                      <div class="card h-100">
+                        <div class="card-body">
+                          <h6 class="card-title text-truncate" title="{{ request.name }}">{{ request.name }}</h6>
+                          <p class="card-text text-muted small">
+                            <i class="fas fa-calendar me-1"></i>
+                            {{ request.date|date:"M d, Y" }}
+                          </p>
+                          <p class="card-text">{{ request.description|truncatewords:20 }}</p>
+                        </div>
+                        <div class="card-footer bg-transparent">
+                          <div class="d-flex justify-content-between align-items-center">
+                            <small class="text-muted">Request #{{ request.id }}</small>
+                            <button type="button" class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#deleteModal{{ request.id }}">
+                              <i class="fas fa-trash me-1"></i>Delete
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Delete Confirmation Modal -->
+                    <div class="modal fade" id="deleteModal{{ request.id }}" tabindex="-1" aria-labelledby="deleteModalLabel{{ request.id }}" aria-hidden="true">
+                      <div class="modal-dialog">
+                        <div class="modal-content">
+                          <div class="modal-header">
+                            <h5 class="modal-title" id="deleteModalLabel{{ request.id }}">Confirm Delete</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                          </div>
+                          <div class="modal-body">
+                            <p>Are you sure you want to delete your request for "<strong>{{ request.name }}</strong>"?</p>
+                            <p class="text-muted small">This action cannot be undone.</p>
+                          </div>
+                          <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <a href="{% url 'movies.delete_request' request_id=request.id %}" class="btn btn-danger">
+                              <i class="fas fa-trash me-1"></i>Delete Request
+                            </a>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  {% endfor %}
+                </div>
+              {% else %}
+                <div class="text-center py-5">
+                  <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                  <h5 class="text-muted">No requests yet</h5>
+                  <p class="text-muted">You haven't submitted any movie requests yet. Use the "Add Request" tab to get started!</p>
+                </div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Auto-switch to My Requests tab after successful submission
+{% if messages %}
+  {% for message in messages %}
+    {% if message.tags == 'success' %}
+      document.addEventListener('DOMContentLoaded', function() {
+        const myRequestsTab = new bootstrap.Tab(document.getElementById('my-requests-tab'));
+        myRequestsTab.show();
+      });
+    {% endif %}
+  {% endfor %}
+{% endif %}
+</script>
+
+{% endblock content %}
