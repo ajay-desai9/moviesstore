@@ -1,0 +1,108 @@
+{% extends 'base.html' %}
+{% block content %}
+{% load static %}
+<div class="p-3">
+  <div class="container">
+    <div class="row mt-3">
+      <div class="col-md-8 mx-auto">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h2>{{ template_data.petition.title }}</h2>
+          <a href="{% url 'movies.petitions' %}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left"></i> Back to Petitions
+          </a>
+        </div>
+        <hr />
+
+        {% if messages %}
+          {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+              {{ message }}
+              <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+          {% endfor %}
+        {% endif %}
+
+        <div class="card">
+          <div class="card-body">
+            <div class="row">
+              <div class="col-md-8">
+                <h4 class="card-title">{{ template_data.petition.movie_title }}{% if template_data.petition.year %} ({{ template_data.petition.year }}){% endif %}</h4>
+                <p class="card-text">{{ template_data.petition.description|linebreaks }}</p>
+              </div>
+              <div class="col-md-4">
+                <div class="text-center">
+                  <div class="mb-3">
+                    <h5>Vote Count</h5>
+                    <div class="d-flex justify-content-center gap-3">
+                      <div class="text-center">
+                        <div class="h3 text-success">{{ template_data.petition.vote_count }}</div>
+                        <small class="text-muted">Yes Votes</small>
+                      </div>
+                      <div class="text-center">
+                        <div class="h3 text-secondary">{{ template_data.petition.total_votes }}</div>
+                        <small class="text-muted">Total Votes</small>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {% if user.is_authenticated %}
+                    {% if template_data.user_vote %}
+                      <div class="alert alert-info">
+                        <i class="fas fa-check-circle"></i> You voted: <strong>{{ template_data.user_vote.vote_type|title }}</strong>
+                      </div>
+                    {% endif %}
+                    
+                    <form method="POST" action="{% url 'movies.vote_petition' petition_id=template_data.petition.id %}">
+                      {% csrf_token %}
+                      <div class="btn-group" role="group">
+                        <input type="radio" class="btn-check" name="vote_type" id="vote_yes" value="yes" 
+                               {% if template_data.user_vote and template_data.user_vote.vote_type == 'yes' %}checked{% endif %}>
+                        <label class="btn btn-outline-success" for="vote_yes">
+                          <i class="fas fa-thumbs-up"></i> Yes
+                        </label>
+
+                        <input type="radio" class="btn-check" name="vote_type" id="vote_no" value="no"
+                               {% if template_data.user_vote and template_data.user_vote.vote_type == 'no' %}checked{% endif %}>
+                        <label class="btn btn-outline-danger" for="vote_no">
+                          <i class="fas fa-thumbs-down"></i> No
+                        </label>
+                      </div>
+                      <div class="mt-2">
+                        <button type="submit" class="btn btn-primary btn-sm">
+                          {% if template_data.user_vote %}
+                            <i class="fas fa-edit"></i> Update Vote
+                          {% else %}
+                            <i class="fas fa-vote-yea"></i> Submit Vote
+                          {% endif %}
+                        </button>
+                      </div>
+                    </form>
+                  {% else %}
+                    <div class="alert alert-warning">
+                      <i class="fas fa-sign-in-alt"></i> Please <a href="{% url 'accounts.login' %}">login</a> to vote on this petition.
+                    </div>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+            
+            <hr>
+            <div class="row">
+              <div class="col-md-6">
+                <small class="text-muted">
+                  <i class="fas fa-user"></i> Created by: <strong>{{ template_data.petition.created_by.username }}</strong>
+                </small>
+              </div>
+              <div class="col-md-6 text-md-end">
+                <small class="text-muted">
+                  <i class="fas fa-calendar"></i> {{ template_data.petition.created_at|date:"F d, Y \a\t g:i A" }}
+                </small>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock content %}

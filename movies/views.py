@@ -1,7 +1,9 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from .models import Movie, Review, MovieRequest
+from .models import Movie, Review, MovieRequest, Petition, PetitionVote
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
+from django.http import JsonResponse
+from django.db import IntegrityError
 
 def index(request):
     search_term = request.GET.get('search')
@@ -94,3 +96,95 @@ def delete_request(request, request_id):
     movie_request.delete()
     messages.success(request, 'Movie request deleted successfully!')
     return redirect('movies.requests')
+
+# Petition Views
+def petitions(request):
+    """Display all active petitions"""
+    petitions_list = Petition.objects.filter(is_active=True).order_by('-created_at')
+    
+    template_data = {}
+    template_data['title'] = 'Movie Petitions'
+    template_data['petitions'] = petitions_list
+    return render(request, 'movies/petitions.html', {'template_data': template_data})
+
+@login_required
+def create_petition(request):
+    """Create a new petition"""
+    if request.method == 'POST':
+        title = request.POST.get('title', '').strip()
+        description = request.POST.get('description', '').strip()
+        movie_title = request.POST.get('movie_title', '').strip()
+        year = request.POST.get('year', '').strip()
+        
+        if title and description and movie_title:
+            petition = Petition()
+            petition.title = title
+            petition.description = description
+            petition.movie_title = movie_title
+            petition.created_by = request.user
+            if year:
+                try:
+                    petition.year = int(year)
+                except ValueError:
+                    pass
+            petition.save()
+            messages.success(request, 'Petition created successfully!')
+            return redirect('movies.petitions')
+        else:
+            messages.error(request, 'Please fill in all required fields.')
+    
+    template_data = {}
+    template_data['title'] = 'Create Petition'
+    return render(request, 'movies/create_petition.html', {'template_data': template_data})
+
+def petition_detail(request, petition_id):
+    """Display petition details and voting interface"""
+    petition = get_object_or_404(Petition, id=petition_id, is_active=True)
+    user_vote = None
+    
+    if request.user.is_authenticated:
+        try:
+            user_vote = PetitionVote.objects.get(petition=petition, user=request.user)
+        except PetitionVote.DoesNotExist:
+            pass
+    
+    template_data = {}
+    template_data['title'] = f'Petition: {petition.title}'
+    template_data['petition'] = petition
+    template_data['user_vote'] = user_vote
+    return render(request, 'movies/petition_detail.html', {'template_data': template_data})
+
+@login_required
+def vote_petition(request, petition_id):
+    """Handle petition voting"""
+    if request.method == 'POST':
+        petition = get_object_or_404(Petition, id=petition_id, is_active=True)
+        vote_type = request.POST.get('vote_type')
+        
+        if vote_type not in ['yes', 'no']:
+            messages.error(request, 'Invalid vote type.')
+            return redirect('movies.petition_detail', petition_id=petition_id)
+        
+        # Check if user already voted
+        existing_vote = PetitionVote.objects.filter(petition=petition, user=request.user).first()
+        
+        if existing_vote:
+            # Update existing vote
+            existing_vote.vote_type = vote_type
+            existing_vote.save()
+            messages.success(request, f'Your vote has been updated to {vote_type}!')
+        else:
+            # Create new vote
+            try:
+                vote = PetitionVote()
+                vote.petition = petition
+                vote.user = request.user
+                vote.vote_type = vote_type
+                vote.save()
+                messages.success(request, f'Thank you for voting {vote_type}!')
+            except IntegrityError:
+                messages.error(request, 'You have already voted on this petition.')
+        
+        return redirect('movies.petition_detail', petition_id=petition_id)
+    
+    return redirect('movies.petitions')
